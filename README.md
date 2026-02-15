@@ -54,6 +54,8 @@ Add to your `docker-compose.yml`
       - LOG_PATTERN=icvExtractPattern
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     depends_on:
       - frigate
     networks:
