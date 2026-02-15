@@ -6,6 +6,7 @@ The condition never self-recovers. This watchdog detects "icvExtractPattern" in 
 (meaning a recorded segment has no video track) and immediately restarts go2rtc to fix it.
 """
 
+import collections
 import logging
 import os
 import re
@@ -24,6 +25,8 @@ FRIGATE_CONTAINER = os.environ.get("FRIGATE_CONTAINER", "frigate")
 GO2RTC_URL = os.environ.get("GO2RTC_URL", "http://frigate:1984")
 COOLDOWN = int(os.environ.get("COOLDOWN", "300"))
 LOG_PATTERN = os.environ.get("LOG_PATTERN", r"icvExtractPattern")
+TRIGGER_COUNT = int(os.environ.get("TRIGGER_COUNT", "3"))
+TRIGGER_WINDOW = int(os.environ.get("TRIGGER_WINDOW", "60"))
 
 
 def restart_go2rtc():
@@ -48,8 +51,10 @@ def main():
     log.info("  go2rtc API: %s", GO2RTC_URL)
     log.info("  Cooldown: %ds", COOLDOWN)
     log.info("  Trigger pattern: %s", LOG_PATTERN)
+    log.info("  Trigger threshold: %d matches in %ds", TRIGGER_COUNT, TRIGGER_WINDOW)
 
     last_restart = 0
+    match_times = collections.deque()
 
     while True:
         cmd = ["docker", "logs", "-f", "--since", "5s", FRIGATE_CONTAINER]
@@ -65,9 +70,15 @@ def main():
                     if now - last_restart < COOLDOWN:
                         log.info("Pattern matched but in cooldown, ignoring: %s", line)
                         continue
-                    log.info("Pattern matched: %s", line)
-                    restart_go2rtc()
-                    last_restart = time.time()
+                    match_times.append(now)
+                    # Discard matches older than the trigger window
+                    while match_times and match_times[0] <= now - TRIGGER_WINDOW:
+                        match_times.popleft()
+                    log.info("Pattern matched (%d/%d in window): %s", len(match_times), TRIGGER_COUNT, line)
+                    if len(match_times) >= TRIGGER_COUNT:
+                        restart_go2rtc()
+                        last_restart = time.time()
+                        match_times.clear()
         except Exception as e:
             log.error("Log follower error: %s", e)
         finally:

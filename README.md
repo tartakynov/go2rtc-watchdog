@@ -18,7 +18,7 @@ Scrypted is sending video to go2rtc — this is proven by live view working fine
 
 ## What the watchdog does
 
-Monitors Frigate container logs for `icvExtractPattern` — an OpenCV error indicating it can't parse metadata from a recording segment. This can happen for other reasons, but in my case it means the saved segments have no video track. When detected, immediately restarts go2rtc via `POST /api/restart` to force all connections to reinitialize. A cooldown prevents repeated restarts.
+Monitors Frigate container logs for `icvExtractPattern` — an OpenCV error indicating it can't parse metadata from a recording segment. This can happen for other reasons, but in my case it means the saved segments have no video track. When the pattern is seen multiple times within a short window (default: 3 times in 60s), restarts go2rtc via `POST /api/restart` to force all connections to reinitialize. A cooldown prevents repeated restarts.
 
 ## Configuration
 
@@ -30,6 +30,8 @@ All via environment variables:
 | `GO2RTC_URL` | `http://frigate:1984` | go2rtc API base URL |
 | `COOLDOWN` | `300` | Seconds to wait after a restart before allowing another |
 | `LOG_PATTERN` | `icvExtractPattern` | Log pattern indicating recordings have no video |
+| `TRIGGER_COUNT` | `3` | Number of pattern matches required to trigger a restart |
+| `TRIGGER_WINDOW` | `60` | Time window in seconds for counting pattern matches |
 
 ## Requirements
 
