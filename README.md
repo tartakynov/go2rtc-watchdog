@@ -38,9 +38,30 @@ All via environment variables:
 
 ## Usage
 
-See `docker-compose.yml` for the service definition. Rebuild after changes:
+Add to your `docker-compose.yml`
+
+```yaml
+  go2rtc-watchdog:
+    build: ./go2rtc-watchdog
+    container_name: go2rtc-watchdog
+    restart: unless-stopped
+    environment:
+      - FRIGATE_CONTAINER=frigate
+      - GO2RTC_URL=http://frigate:1984
+      - COOLDOWN=300
+      - LOG_PATTERN=icvExtractPattern
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - frigate
+    networks:
+      frigate-internal:
+```
+
+Rebuild after changes
 
 ```
 docker compose build --no-cache go2rtc-watchdog
 docker compose up -d go2rtc-watchdog
 ```
+
